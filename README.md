@@ -19,6 +19,27 @@ Both **IPv4** and **IPv6** are fully supported. It uses Go's modern `net/netip` 
 
 ## Installation
 
+### Via mise (recommended)
+
+[mise](https://mise.jdx.dev) installs pre-built binaries directly from GitHub Releases using the `github:` backend.
+
+```bash
+# Install globally
+mise use -g github:vignemail1/ip_in_subnet
+
+# Or pin a specific version
+mise use -g github:vignemail1/ip_in_subnet@v1.0.0
+```
+
+Or add it to your project's `mise.toml`:
+
+```toml
+[tools]
+"github:vignemail1/ip_in_subnet" = "latest"
+```
+
+Then run `mise install`.
+
 ### From release binaries
 
 Download the pre-built binary for your platform from the [Releases](https://github.com/vignemail1/ip_in_subnet/releases) page.
