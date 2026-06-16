@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Set artifact names
+        id: names
+        shell: bash
+        run: |
+          BIN="ip_in_subnet"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BIN="${BIN}.exe"
+          fi
+          ARCHIVE="ip_in_subnet_${{ matrix.goos }}_${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            ARCHIVE="${ARCHIVE}.zip"
+          else
+            ARCHIVE="${ARCHIVE}.tar.gz"
+          fi
+          echo "bin=${BIN}" >> "$GITHUB_OUTPUT"
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          go build \
+            -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
+            -o "${{ steps.names.outputs.bin }}" \
+            .
+
+      - name: Package (Linux / macOS)
+        if: matrix.goos != 'windows'
+        run: |
+          tar -czf "${{ steps.names.outputs.archive }}" \
+            "${{ steps.names.outputs.bin }}" \
+            README.md LICENSE
+
+      - name: Package (Windows)
+        if: matrix.goos == 'windows'
+        run: |
+          zip "${{ steps.names.outputs.archive }}" \
+            "${{ steps.names.outputs.bin }}" \
+            README.md LICENSE
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.names.outputs.archive }}
+          path: ${{ steps.names.outputs.archive }}
+          retention-days: 1
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dist/*

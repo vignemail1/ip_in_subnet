@@ -1,0 +1,10 @@
+# Compiled binaries
+ip_in_subnet
+ip_in_subnet.exe
+
+# Release archives
+*.tar.gz
+*.zip
+
+# Go workspace file
+vendor/
